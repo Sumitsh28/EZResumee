@@ -4,11 +4,16 @@ import {
   ref,
   uploadBytesResumable,
 } from "firebase/storage";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { FaTrash, FaUpload } from "react-icons/fa6";
 import { PuffLoader } from "react-spinners";
 import { toast } from "react-toastify";
-import { storage } from "../config/firebase.config";
+import { db, storage } from "../config/firebase.config";
+import { adminIds, initialTags } from "../utils/helper";
+import { deleteDoc, doc, serverTimestamp, setDoc } from "firebase/firestore";
+import useTemplates from "../hooks/useTemplates";
+import useUser from "../hooks/useUser";
+import { useNavigate } from "react-router-dom";
 
 const CreateTemplate = () => {
   const [formData, setFormData] = useState({
@@ -21,6 +26,19 @@ const CreateTemplate = () => {
     uri: null,
     progress: 0,
   });
+
+  const [selectedTags, setSelectedTags] = useState([]);
+
+  const navigate = useNavigate();
+
+  const {
+    data: templates,
+    isError: templatesIsError,
+    isLoading: templatesIsLoading,
+    refetch: templatesRefetch,
+  } = useTemplates();
+
+  const { data: user, isLoading } = useUser();
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -95,6 +113,65 @@ const CreateTemplate = () => {
     }
   };
 
+  const handleSelectedTag = (tag) => {
+    if (selectedTags.includes(tag)) {
+      setSelectedTags(selectedTags.filter((selected) => selected !== tag));
+    } else {
+      setSelectedTags([...selectedTags, tag]);
+    }
+  };
+
+  const pushToCloud = async () => {
+    const timestamp = serverTimestamp();
+    const id = `${Date.now()}`;
+    const _doc = {
+      _id: id,
+      title: formData.title,
+      imageURL: imageAssest.uri,
+      tags: selectedTags,
+      name:
+        templates && templates.length > 0
+          ? `Template${templates.length + 1}`
+          : "Template1",
+      timestamp: timestamp,
+    };
+
+    await setDoc(doc(db, "templates", id), _doc)
+      .then(() => {
+        setFormData((prevData) => ({ ...prevData, title: "", imageURL: "" }));
+
+        setImageAssest((prevAssest) => ({ ...prevAssest, uri: null }));
+
+        setSelectedTags([]);
+        templatesRefetch();
+
+        toast.success("Data pushed to cloud");
+      })
+      .catch((error) => {
+        toast.error(`Error: ${error.message}`);
+      });
+  };
+
+  const removeTemplate = async (template) => {
+    const deleteRef = ref(storage, template?.imageURL);
+    await deleteObject(deleteRef).then(async () => {
+      await deleteDoc(doc(db, "templates", template?._id))
+        .then(() => {
+          toast.success("Template deleted from the cloud");
+          templatesRefetch();
+        })
+        .catch((err) => {
+          toast.error(`Error: ${err.message}`);
+        });
+    });
+  };
+
+  useEffect(() => {
+    if (!isLoading && !adminIds.includes(user?.uid)) {
+      navigate("/", { replace: true });
+    }
+  }, [user, isLoading]);
+
   return (
     <div className="w-full px-4 lg:px-10 2xl:px-32 py-4 grid grid-cols-1 lg:grid-cols-12">
       <div className="col-span-12 lg:col-span-4 2xl:col-span-3 w-full flax-1 flex items-center justify-start flex-col gap-4 px-2">
@@ -107,7 +184,9 @@ const CreateTemplate = () => {
             TempID :{" "}
           </p>
           <p className="text-sm text-txtDark capitalize font-bold">
-            Template 1
+            {templates && templates.length > 0
+              ? `Template${templates.length + 1}`
+              : "Template1"}
           </p>
         </div>
         <input
@@ -167,9 +246,74 @@ const CreateTemplate = () => {
             </React.Fragment>
           )}
         </div>
+
+        <div className="w-full flex items-center flex-wrap gap-2">
+          {initialTags.map((tag, i) => (
+            <div
+              key={i}
+              onClick={() => handleSelectedTag(tag)}
+              className={`border border-gray-300 px-2 py-1 rounded-md cursor-pointer ${
+                selectedTags.includes(tag) ? "bg-blue-500 text-white" : ""
+              }`}
+            >
+              <p>{tag}</p>
+            </div>
+          ))}
+        </div>
+
+        <button
+          type="button"
+          className="w-full bg-blue-700 text-white rounded-md py-3"
+          onClick={pushToCloud}
+        >
+          Save
+        </button>
       </div>
-      <div className="col-span-12 lg:col-span-8 2xl:col-span-9 bg-red-200 ">
-        2
+      <div className="col-span-12 lg:col-span-8 2xl:col-span-9 px-2 w-full flex-1 py-4">
+        {templatesIsLoading ? (
+          <React.Fragment>
+            <div className="w-full h-full flex items-center justify-center">
+              <PuffLoader color="#498FCD" size={40} />
+            </div>
+          </React.Fragment>
+        ) : (
+          <React.Fragment>
+            {templates && templates.length > 0 ? (
+              <React.Fragment>
+                <div className="w-full h-full grid grid-cols-1 lg:grid-cols-2 2xl:grid-cols-4 gap-4">
+                  {templates?.map((template) => (
+                    <div
+                      className="w-full h-[500px] rounded-md overflow-hidden relative"
+                      key={template._id}
+                    >
+                      <img
+                        src={template?.imageURL}
+                        alt=""
+                        className="w-full h-full object-cover"
+                      />
+
+                      <div
+                        className="absolute top-4 right-4 w-8 h-8 rounded-md flex items-center justify-center bg-red-500 cursor-pointer"
+                        onClick={() => removeTemplate(template)}
+                      >
+                        <FaTrash className="text-sm text-white" />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </React.Fragment>
+            ) : (
+              <React.Fragment>
+                <div className="w-full h-full flex items-center justify-center flex-col gap-6">
+                  <PuffLoader color="#498FCD" size={40} />
+                  <p className="text-xl tracking-wider capitalize text-txtPrimary">
+                    No Data
+                  </p>
+                </div>
+              </React.Fragment>
+            )}
+          </React.Fragment>
+        )}
       </div>
     </div>
   );
