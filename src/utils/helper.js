@@ -1,4 +1,10 @@
-// import { Template1, Template2 } from "../components/designs";
+import {
+  Template1,
+  Template2,
+  Template3,
+  Template4,
+  Template5,
+} from "../components/designs";
 
 export const adminIds = ["102711492085213058276"];
 
@@ -56,7 +62,10 @@ export const FiltersData = [
   { id: "20", label: "Legal Counsel", value: "legal_counsel" },
 ];
 
-// export const TemplatesData = [
-//   { id: `template-${Date.now()}`, name: "Template1", component: Template1 },
-//   { id: `template-${Date.now()}`, name: "Template2", component: Template2 },
-// ];
+export const TemplatesData = [
+  { id: `template-${Date.now()}`, name: "Template1", component: Template1 },
+  { id: `template-${Date.now()}`, name: "Template2", component: Template2 },
+  { id: `template-${Date.now()}`, name: "Template3", component: Template3 },
+  { id: `template-${Date.now()}`, name: "Template4", component: Template4 },
+  { id: `template-${Date.now()}`, name: "Template5", component: Template5 },
+];

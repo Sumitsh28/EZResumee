@@ -9,12 +9,28 @@ import { fadeInOut, slideUpMenu } from "../animations";
 import { QueryClient, useQueryClient } from "react-query";
 import { auth } from "../config/firebase.config";
 import { adminIds } from "../utils/helper";
+import useFilter from "../hooks/useFilters";
 
 const Header = () => {
   const { data, isLoading, isError } = useUser();
   const [isMenu, setIsMenu] = useState(false);
+  const { data: filterData } = useFilter();
 
   const queryClient = useQueryClient();
+
+  const handleSearchTerm = (e) => {
+    queryClient.setQueryData("globalFilter", {
+      ...queryClient.getQueryData("globalFilter"),
+      searchTerm: e.target.value,
+    });
+  };
+
+  const clearFilter = () => {
+    queryClient.setQueryData("globalFilter", {
+      ...queryClient.getQueryData("globalFilter"),
+      searchTerm: "",
+    });
+  };
 
   const signOutUser = async () => {
     await auth.signOut().then(() => {
@@ -29,10 +45,31 @@ const Header = () => {
       </Link>
       <div className="flex-1 border border-gray-300 px-4 py-1 rounded-md flex items-center justify-between bg-gray-200">
         <input
+          value={
+            filterData
+              ? filterData.searchTerm
+                ? filterData.searchTerm
+                : ""
+              : ""
+          }
+          onChange={handleSearchTerm}
           type="text"
           placeholder="Search here......."
           className="flex-1 h-10 bg-transparent text-base font-semibold outline-none border-none"
         />
+        <AnimatePresence>
+          {filterData
+            ? filterData.searchTerm.length > 0 && (
+                <motion.div
+                  onClick={clearFilter}
+                  {...fadeInOut}
+                  className="w-8 h-8 flex items-center justify-center bg-gray-300 rounded-md cursor-pointer active:scale-95 duration-150"
+                >
+                  <p className="text-2xl text-black">x</p>
+                </motion.div>
+              )
+            : ""}
+        </AnimatePresence>
       </div>
       <AnimatePresence>
         {isLoading ? (
@@ -91,7 +128,7 @@ const Header = () => {
                       <div className="w-full flex-col items-start flex gap-8 pt-6">
                         <Link
                           className="text-txtLight hover:text-txtDark text-base whitespace-nowrap"
-                          to={"/profile"}
+                          to={`/profile/${data?.uid}`}
                         >
                           My Account
                         </Link>

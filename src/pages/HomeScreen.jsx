@@ -21,7 +21,7 @@ function HomeScreen() {
             <Route path="/profile/:uid" element={<UserProfile />} />
             <Route path="/resume/*" element={<CreateResume />} />
             <Route
-              path="/resumeDetail/:templateID"
+              path="/resumeDetails/:templateID"
               element={<TemplateDesignDetails />}
             />
           </Routes>
